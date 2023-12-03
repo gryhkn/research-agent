@@ -1,16 +1,39 @@
-# This is a sample Python script.
+import trafilatura
+import requests
+import json
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+brwoserless_api_key = os.getenv("BROWSERLESS_API_KEY")
+serper_api_key = os.getenv("SERP_API_KEY")
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+def web_search(search_term):
+    api_endpoint = "https://google.serper.dev/search"
 
+    # Set up request parameters
+    payload = json.dumps({
+        "q": search_term
+    })
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+    headers = {
+        'X-API-KEY': serper_api_key,
+        'Content-Type': 'application/json'
+    }
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    # Make the GET request to the search API
+
+    response = requests.request("POST", api_endpoint, headers=headers, data=payload)
+
+    if response.ok:
+        search_results = response.json()
+        print("Search Results:", search_results)
+
+        return search_results
+    else:
+        print(f"Error occurred: {response.status_code}")
+        return None
+
+web_search("Meta'nın yeni Thread uygulaması nedir?")
