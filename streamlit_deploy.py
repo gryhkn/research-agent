@@ -11,15 +11,11 @@ from langchain.tools import Tool
 import trafilatura
 import streamlit as st
 from langchain.schema import SystemMessage
-import os
-from dotenv import load_dotenv
 from elevenlabs import generate
-
-load_dotenv()
-serper_api_key = os.getenv("SERP_API_KEY")
+import os
 
 
-def web_search(search_term):
+def web_search(search_term, serper_api_key):
     api_endpoint = "https://google.serper.dev/search"
 
     # request parameters
@@ -96,10 +92,10 @@ def summary(objective, content):
 
 tools = [
     Tool.from_function(
-        func=web_search,
+        func=lambda search_term, serper_api_key: web_search(search_term,
+                                                                                               serper_api_key),
         name="Search",
-
-        description= "Mevcut olaylar ve veriler hakkında soruları yanıtlamak için kullanılır. Hedefe yönelik sorular sorun"
+        description="Mevcut olaylar ve veriler hakkında soruları yanıtlamak için kullanılır. Hedefe yönelik sorular sorun"
     ),
     Tool.from_function(
         func=lambda objective, url: extract_and_summarize_content(objective, url),
@@ -127,21 +123,13 @@ agent_kwargs = {
     "system_message": system_message,
 }
 
-llm = ChatOpenAI(temperature=0, model="gpt-4-1106-preview")
-memory = ConversationSummaryBufferMemory(
-    memory_key="memory", return_messages=True, llm=llm, max_token_limit=1000)
 
-agent_executor = initialize_agent(
-    tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=True, agent_kwargs=agent_kwargs,
-    memory=memory,
-)
-
-# Agent'i çağır
-# agent_executor.invoke(
-#     {
-#         "input": "Leonardo dicaprio'nun mevcut kız arkadaşı kim? Onunla ne zaman sevgili oldu? Kız kaç yaşında"
-#     }
-# )
+if 'OPENAI_API_KEY' not in st.session_state:
+    st.session_state['openai_api_key'] = ""
+if 'serper_api_key' not in st.session_state:
+    st.session_state['serper_api_key'] = ""
+if 'elevenlabs_api_key' not in st.session_state:
+    st.session_state['elevenlabs_api_key'] = ""
 
 
 def main():
@@ -149,18 +137,19 @@ def main():
 
     st.title("Araştırma Asistanı 🔍")
     st.markdown("""
-        Merak ettiğiniz konuyu girin ve detaylı araştırma sonuçlarını hemen alın.
-    """)
-    st.markdown("""
-        Bu uygulama arka tarafta Google Search ve Langchain kullanarak sorduğunuz veya araştırma konunusu için internette araştırma yapar, bulduğu sonuçlar aratılan konu ile ilgili
-        değilse başka kaynakları tarar. Bu sayede sorduğunuz soruya birden fazla kaynaklı doğru cevaplar verir. Tüm bunları Langhcain ile oluşturulan iki farklı AI Agent ile yapar.
-        Ayrıca eğer ElevenLabs API Key girerseniz, bulduğu sonucu seslendirir.     
+            Merak ettiğiniz konuyu girin ve detaylı araştırma sonuçlarını hemen alın.
         """)
     st.markdown("""
-        Uygulamanın çalışabilmesi için OpenAI ve SERP API Key girmek zorunlu, seslendirme istemezseniz Elevenlabs kısmını boş bırakın.
-        """)
+            Bu uygulama arka tarafta Google Search ve Langchain kullanarak sorduğunuz veya araştırma konunusu için internette araştırma yapar, bulduğu sonuçlar aratılan konu ile ilgili
+            değilse başka kaynakları tarar. Bu sayede sorduğunuz soruya birden fazla kaynaklı doğru cevaplar verir. Tüm bunları Langhcain ile oluşturulan iki farklı AI Agent ile yapar.
+            Ayrıca eğer ElevenLabs API Key girerseniz, bulduğu sonucu seslendirir.     
+            """)
+    st.markdown("""
+            Uygulamanın çalışabilmesi için OpenAI ve SERP API Key girmek zorunlu, seslendirme istemezseniz Elevenlabs kısmını boş bırakın. API Key'leri girdikten sonra arama kutucuğu çıkacaktır.
+            """)
     st.markdown("X'te bana ulaşın: [**:blue[Giray]**](https://twitter.com/gryhkn)")
-    # örnek
+    st.divider()
+
     if 'init' not in st.session_state:
         st.session_state['init'] = True
 
@@ -173,35 +162,66 @@ def main():
         """
         st.session_state['initial_audio'] = "first wav carl.wav"  # Local ses dosyasının yolu
 
-    query = st.text_input("Araştırma Konusu", help="Araştırmak istediğiniz konuyu buraya yazın.")
-    search_button_clicked = st.button("Ara", key="search")
-    st.divider()
+    # API anahtarlarını kullanıcıdan alın
+    st.session_state['openai_api_key'] = st.text_input("OpenAI API Anahtarı", type="password")
+    st.session_state['serper_api_key'] = st.text_input("Serper API Anahtarı", type="password")
+    st.session_state['elevenlabs_api_key'] = st.text_input("ElevenLabs API Anahtarı (isteğe bağlı)", type="password")
 
+    if st.session_state['openai_api_key'] and st.session_state['serper_api_key']:
+        os.environ["OPENAI_API_KEY"] = st.session_state['openai_api_key']
+        os.environ["SERP_API_KEY"] = st.session_state['serper_api_key']
 
-    if search_button_clicked and query:
-        # kullanıcı input
-        with st.spinner(f"'{query}' konusu için bilgiler aranıyor..."):
-            result = agent_executor({"input": query})
-            st.success("Araştırma tamamlandı!")
+        # ChatOpenAI nesnesini başlat
+        llm = ChatOpenAI(temperature=0, model="gpt-4-1106-preview", openai_api_key=st.session_state['openai_api_key'])
+
+        memory = ConversationSummaryBufferMemory(
+            memory_key="memory", return_messages=True, llm=llm, max_token_limit=1000)
+
+        for tool in tools:
+            if tool.name == "Search":
+                tool.func = lambda search_term: web_search(search_term, st.session_state['serper_api_key'])
+
+        # Agent'i yeniden başlat
+        agent_executor = initialize_agent(
+            tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=True, agent_kwargs=agent_kwargs,
+            memory=memory,
+            serper_api_key=st.session_state['serper_api_key']
+        )
+
+        query = st.text_input("Araştırma Konusu", help="Araştırmak istediğiniz konuyu buraya yazın.")
+        search_button_clicked = st.button("Ara", key="search")
+
+        if search_button_clicked and query:
+            with st.spinner(f"'{query}' için araştırma yapılıyor..."):
+                result = agent_executor({"input": query})
+                st.success("Araştırma tamamlandı!")
+                st.markdown(result['output'])
+
+                if st.session_state['elevenlabs_api_key']:
+                    os.environ["ELEVEN_API_KEY"] = st.session_state['elevenlabs_api_key']
+                    text_to_speech = result['output'][:2500]
+                    audio = generate(
+                        text=text_to_speech,
+                        voice="Bella",
+                        model='eleven_multilingual_v2'
+                    )
+                    st.audio(audio, format='audio/wav')
+
+            st.session_state['init'] = False
+
             st.markdown(result['output'])
-            audio = generate(
-                text=result['output'],
-                voice="Bella",
-                model='eleven_multilingual_v2'
-            )
-            st.audio(audio, format='audio/wav')
-        st.session_state['init'] = False
-    elif st.session_state['init']:
-        st.info("Örnek")
-        # başlangıç değerlerini göster
-        st.markdown(st.session_state['initial_text'])
-        st.audio(st.session_state['initial_audio'], format='audio/wav')
 
-    st.sidebar.image("assistant.jpg", caption='Overwatch')
-    st.sidebar.info("Felicity Smoak")
+
+    else:
+        st.warning("Lütfen OpenAI ve Serper API anahtarlarını girin.")
+
+    st.divider()
+    st.info("Örnek")
+    st.markdown(st.session_state['initial_text'])
+    st.audio(st.session_state['initial_audio'], format='audio/wav')
+
+    st.sidebar.image("assistant.jpg", caption='')
+    st.sidebar.info("Overwatch")
 
 if __name__ == "__main__":
     main()
-
-#extract_and_summarize_content("Montgisard Muharebesini kim kazanmıştır?", "https://tr.wikipedia.org/wiki/Montgisard_Muharebesi#:~:text=Montgisard%20Muharebesi%2C%20Eyyubiler%20ile%20Kud%C3%BCs,ile%20Selahattin%20Eyyubi'yi%20yenmi%C5%9Ftir.")
-# web_search("Meta'nın yeni Thread uygulaması nedir?")
