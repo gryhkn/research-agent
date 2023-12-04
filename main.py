@@ -13,6 +13,7 @@ import streamlit as st
 from langchain.schema import SystemMessage
 import os
 from dotenv import load_dotenv
+from elevenlabs import generate
 
 load_dotenv()
 brwoserless_api_key = os.getenv("BROWSERLESS_API_KEY")
@@ -137,8 +138,64 @@ agent_executor = initialize_agent(
     memory=memory,
 )
 
-agent_executor.invoke(
-    {
-        "input": "Leonardo dicaprio'nun mevcut kız arkadaşı kim? Onunla ne zaman sevgili oldu? Kız kaç yaşında"
-    }
-)
+# Agent'i çağır
+# agent_executor.invoke(
+#     {
+#         "input": "Leonardo dicaprio'nun mevcut kız arkadaşı kim? Onunla ne zaman sevgili oldu? Kız kaç yaşında"
+#     }
+# )
+
+
+def main():
+    st.set_page_config(page_title="Araştırma Asistanı", page_icon="🔍")
+
+    st.title("Araştırma Asistanı 🔍")
+    st.markdown("""
+        Merak ettiğiniz konuyu girin ve detaylı araştırma sonuçlarını hemen alın.
+    """)
+
+    # Başlangıç değerlerini ayarlayın
+    if 'init' not in st.session_state:
+        st.session_state['init'] = True
+
+        st.session_state['initial_text'] = """
+        bir süredir resmen hayat felsefesi yapılacak iki cümle kafamda yankılanıp duruyor.
+        ilki carl jung’tan:
+        “dünya sana kim olduğunu soracak, eğer cevabı bilmiyorsan o söyleyecek.”
+        ikincisi de david hume’dan:
+        “eğer burada durup daha ileri gitmeyeceksek, niçin bu noktaya kadar geldik?”
+        """
+        st.session_state['initial_audio'] = "first wav carl.wav"  # Local ses dosyasının yolu
+
+    query = st.text_input("Araştırma Konusu", help="Araştırmak istediğiniz konuyu buraya yazın.")
+    search_button_clicked = st.button("Ara", key="search")
+    st.divider()
+
+
+    if search_button_clicked and query:
+        # Kullanıcı girdisi işleme
+        with st.spinner(f"'{query}' konusu için bilgiler aranıyor..."):
+            result = agent_executor({"input": query})
+            st.success("Araştırma tamamlandı!")
+            st.markdown(result['output'])
+            audio = generate(
+                text=result['output'],
+                voice="Bella",
+                model='eleven_multilingual_v2'
+            )
+            st.audio(audio, format='audio/wav')
+        st.session_state['init'] = False
+    elif st.session_state['init']:
+        st.info("Örnek")
+        # Başlangıç değerlerini göster
+        st.markdown(st.session_state['initial_text'])
+        st.audio(st.session_state['initial_audio'], format='audio/wav')
+
+    st.sidebar.image("assistant.jpg", caption='Adını sen koy')
+    st.sidebar.info(".")
+
+if __name__ == "__main__":
+    main()
+
+#extract_and_summarize_content("Montgisard Muharebesini kim kazanmıştır?", "https://tr.wikipedia.org/wiki/Montgisard_Muharebesi#:~:text=Montgisard%20Muharebesi%2C%20Eyyubiler%20ile%20Kud%C3%BCs,ile%20Selahattin%20Eyyubi'yi%20yenmi%C5%9Ftir.")
+# web_search("Meta'nın yeni Thread uygulaması nedir?")
