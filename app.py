@@ -186,13 +186,12 @@ def main():
             result = agent_executor({"input": query})
             st.success("Araştırma tamamlandı!")
             st.info(result['output'])
-            if elevenlabs_api_key:
-                audio = generate(
-                    text=result['output'],
-                    voice="Bella",
-                    model='eleven_multilingual_v2'
-                )
-                st.audio(audio, format='audio/wav')
+            audio = generate(
+                text=result['output'],
+                voice="Bella",
+                model='eleven_multilingual_v2'
+            )
+            st.audio(audio, format='audio/wav')
         st.session_state['init'] = False
     elif st.session_state['init']:
         st.text("ÖRNEK:")
