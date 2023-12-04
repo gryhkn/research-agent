@@ -17,6 +17,7 @@ from elevenlabs import generate
 
 load_dotenv()
 serper_api_key = os.getenv("SERP_API_KEY")
+elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
 
 
 def web_search(search_term):
@@ -160,6 +161,7 @@ def main():
         Uygulamanın çalışabilmesi için OpenAI ve SERP API Key girmek zorunlu, seslendirme istemezseniz Elevenlabs kısmını boş bırakın.
         """)
     st.markdown("X'te bana ulaşın: [**:blue[Giray]**](https://twitter.com/gryhkn)")
+
     # örnek
     if 'init' not in st.session_state:
         st.session_state['init'] = True
@@ -180,25 +182,26 @@ def main():
 
     if search_button_clicked and query:
         # kullanıcı input
-        with st.spinner(f"'{query}' konusu için bilgiler aranıyor..."):
+        with st.spinner(f"'{query}' için araştırma yapılıyor..."):
             result = agent_executor({"input": query})
             st.success("Araştırma tamamlandı!")
-            st.markdown(result['output'])
-            audio = generate(
-                text=result['output'],
-                voice="Bella",
-                model='eleven_multilingual_v2'
-            )
-            st.audio(audio, format='audio/wav')
+            st.info(result['output'])
+            if elevenlabs_api_key:
+                audio = generate(
+                    text=result['output'],
+                    voice="Bella",
+                    model='eleven_multilingual_v2'
+                )
+                st.audio(audio, format='audio/wav')
         st.session_state['init'] = False
     elif st.session_state['init']:
-        st.info("Örnek")
+        st.text("ÖRNEK:")
         # başlangıç değerlerini göster
         st.markdown(st.session_state['initial_text'])
         st.audio(st.session_state['initial_audio'], format='audio/wav')
 
-    st.sidebar.image("assistant.jpg", caption='Overwatch')
-    st.sidebar.info("Felicity Smoak")
+    st.sidebar.image("assistant.jpg", caption='')
+    st.sidebar.info("Overwatch")
 
 if __name__ == "__main__":
     main()
