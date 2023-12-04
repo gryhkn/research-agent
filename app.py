@@ -137,13 +137,6 @@ agent_executor = initialize_agent(
     memory=memory,
 )
 
-# Agent'i çağır
-# agent_executor.invoke(
-#     {
-#         "input": "Leonardo dicaprio'nun mevcut kız arkadaşı kim? Onunla ne zaman sevgili oldu? Kız kaç yaşında"
-#     }
-# )
-
 
 def main():
     st.set_page_config(page_title="Araştırma Asistanı", page_icon="🔍")
@@ -204,6 +197,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-#extract_and_summarize_content("Montgisard Muharebesini kim kazanmıştır?", "https://tr.wikipedia.org/wiki/Montgisard_Muharebesi#:~:text=Montgisard%20Muharebesi%2C%20Eyyubiler%20ile%20Kud%C3%BCs,ile%20Selahattin%20Eyyubi'yi%20yenmi%C5%9Ftir.")
-# web_search("Meta'nın yeni Thread uygulaması nedir?")

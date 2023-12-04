@@ -77,3 +77,8 @@ streamlit run streamlit_deploy.py
 ```
 
 kodunu çalıştırmak.
+
+
+### Elevenlabs seslendirme
+Elevenlabs seslendirmesi için ```eleven_multilingual_v2``` ve ```Bella``` kullanıyorum. Ama siz kendi sesinizi veya başka
+bir sesi de kullanabilirsiniz. Bunun için Elevenlabs'ta çeşitli ayarlamalar yapmanız gerekiyor.
